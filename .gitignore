@@ -1,0 +1,11 @@
+# Secretos y configuración local de Docker Compose
+.env
+.env.local
+.env.*.local
+
+# Artefactos locales
+*.log
+.DS_Store
+
+# Backups de volúmenes
+*.tar.gz
