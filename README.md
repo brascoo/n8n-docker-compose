@@ -1,121 +1,123 @@
-# n8n self-hosted con Docker Compose
+# n8n self-hosted with Docker Compose
 
-Stack de [n8n](https://n8n.io) autocontenido sobre Docker Compose. Incluye el
-servicio de sandbox, task runners y una instancia interna de
-[SearXNG](https://docs.searxng.org/) para búsquedas web desde nodos de IA.
+**English** | [Español](README.es.md)
 
-## Contenido del stack
+A self-contained [n8n](https://n8n.io) stack on Docker Compose. It includes the
+sandbox service, task runners, and an internal
+[SearXNG](https://docs.searxng.org/) instance for web searches from AI nodes.
 
-| Servicio | Imagen | Función |
+## Stack contents
+
+| Service | Image | Purpose |
 | --- | --- | --- |
-| `n8n` | `n8nio/n8n` | Aplicación principal. Único puerto publicado al host (`5678`). |
-| `runners` | `n8n-io/runners` | Ejecuta el código de los nodos Code. |
-| `sandbox-api` | `n8n-io/n8n-sandbox-service-api` | API del servicio de sandbox. Solo accesible por la red interna. |
-| `sandbox-runner-1` | `n8n-io/n8n-sandbox-service-runner-dind` | Runner del sandbox (Docker-in-Docker privilegiado). No exponer. |
-| `sandbox-certs` | `n8n-io/n8n-sandbox-service-api` | Genera los certificados mTLS y termina. |
-| `searxng` | `searxng/searxng` | Motor de búsqueda interno para n8n. No exponer. |
+| `n8n` | `n8nio/n8n` | Main application. The only port published to the host (`5678`). |
+| `runners` | `n8n-io/runners` | Executes code from Code nodes. |
+| `sandbox-api` | `n8n-io/n8n-sandbox-service-api` | Sandbox service API. Only reachable over the internal network. |
+| `sandbox-runner-1` | `n8n-io/n8n-sandbox-service-runner-dind` | Sandbox runner (privileged Docker-in-Docker). Do not expose. |
+| `sandbox-certs` | `n8n-io/n8n-sandbox-service-api` | Generates the mTLS certificates and exits. |
+| `searxng` | `searxng/searxng` | Internal search engine for n8n. Do not expose. |
 
-Flujo simplificado:
+Simplified flow:
 
 ```mermaid
 flowchart LR
-    U[Usuario] -->|:5678| N8N[n8n]
+    U[User] -->|:5678| N8N[n8n]
     N8N --> RUN[runners]
     N8N -->|API| SBX[sandbox-api]
     N8N -->|"http://searxng:8080"| SX[searxng]
     SBX <--> SBR[sandbox-runner-1]
-    CERT[sandbox-certs] -.->|genera mTLS| SBX
+    CERT[sandbox-certs] -.->|generates mTLS| SBX
     CERT -.-> SBR
 ```
 
-## Requisitos
+## Requirements
 
-- Docker Engine 24 o superior con Compose v2 (`docker compose`).
-- 4 GB de RAM como mínimo (se recomiendan 8 GB si se usan sandbox y runners).
-- Acceso a `docker.io` y `ghcr.io` para descargar las imágenes.
+- Docker Engine 24 or newer with Compose v2 (`docker compose`).
+- At least 4 GB of RAM (8 GB recommended when using the sandbox and runners).
+- Access to `docker.io` and `ghcr.io` to pull the images.
 
-## Inicio rápido
+## Quick start
 
 ```bash
 git clone https://github.com/brascoo/n8n.git
 cd n8n
 
-# Crea tu configuración local a partir de la plantilla
+# Create your local configuration from the template
 cp .env.example .env
 $EDITOR .env
 
 docker compose up -d
 ```
 
-Comprueba el estado de los servicios:
+Check the status of the services:
 
 ```bash
 docker compose ps
 docker compose logs -f n8n
 ```
 
-Abre n8n en <http://localhost:5678> y crea la cuenta de propietario en el
-primer acceso.
+Open n8n at <http://localhost:5678> and create the owner account on first
+access.
 
-> El arranque puede tardar: `sandbox-certs` debe terminar y `sandbox-api`
-> debe pasar su healthcheck antes de que arranque `n8n`.
+> Startup may take a while: `sandbox-certs` must finish and `sandbox-api` must
+> pass its healthcheck before `n8n` starts.
 
-## Configuración
+## Configuration
 
-La configuración se carga desde `.env` (creado a partir de `.env.example`),
-que es leído por `n8n`, `sandbox-api`, `sandbox-runner-1` y `searxng`.
+Configuration is loaded from `.env` (created from `.env.example`), which is
+read by `n8n`, `sandbox-api`, `sandbox-runner-1`, and `searxng`.
 
-| Variable | Descripción |
+| Variable | Description |
 | --- | --- |
-| `N8N_VERSION` | Versión de la imagen de n8n (ver [releases](https://github.com/n8n-io/n8n/releases)). |
-| `N8N_SANDBOX_VERSION` | Versión del sandbox. La API, el runner y la imagen sandbox comparten release. |
-| `N8N_RUNNERS_AUTH_TOKEN` | Token de autenticación entre n8n y los task runners. |
-| `SANDBOX_API_KEYS` | Claves aceptadas por la API del sandbox (separadas por comas si hay varias). |
-| `SANDBOX_API_RUNNER_REGISTRATION_TOKEN` | Token de registro de runners en el sandbox. |
-| `SANDBOX_RUNNER_API_KEYS` | Claves aceptadas por el runner del sandbox. |
-| `N8N_SANDBOX_SERVICE_API_KEY` | Clave con la que n8n se autentica en el sandbox. Debe coincidir con uno de los valores de `SANDBOX_API_KEYS`. |
-| `SEARXNG_SECRET` | Secreto de la instancia SearXNG. |
-| `N8N_INSTANCE_AI_SEARXNG_URL` | URL interna de SearXNG. Debe ser `http://searxng:8080`. |
+| `N8N_VERSION` | n8n image version (see [releases](https://github.com/n8n-io/n8n/releases)). |
+| `N8N_SANDBOX_VERSION` | Sandbox version. The API, runner, and sandbox images share one release. |
+| `N8N_RUNNERS_AUTH_TOKEN` | Authentication token between n8n and the task runners. |
+| `SANDBOX_API_KEYS` | Keys accepted by the sandbox API (comma-separated if there are several). |
+| `SANDBOX_API_RUNNER_REGISTRATION_TOKEN` | Runner registration token for the sandbox. |
+| `SANDBOX_RUNNER_API_KEYS` | Keys accepted by the sandbox runner. |
+| `N8N_SANDBOX_SERVICE_API_KEY` | Key n8n uses to authenticate to the sandbox. Must match one of the values in `SANDBOX_API_KEYS`. |
+| `SEARXNG_SECRET` | Secret for the SearXNG instance. |
+| `N8N_INSTANCE_AI_SEARXNG_URL` | Internal SearXNG URL. Must be `http://searxng:8080`. |
 
-Genera secretos aleatorios con:
+Generate random secrets with:
 
 ```bash
 openssl rand -hex 32
 ```
 
-No reutilices el mismo valor para todos los secretos y no subas valores reales
-al repositorio.
+Do not reuse the same value for every secret, and never commit real values to
+the repository.
 
-## Operación
+## Operations
 
 ```bash
-# Ver estado y logs
+# Check status and logs
 docker compose ps
 docker compose logs -f --tail=100
 
-# Reiniciar un servicio
+# Restart a service
 docker compose restart n8n
 
-# Detener el stack (conserva los volúmenes)
+# Stop the stack (keeps the volumes)
 docker compose down
 
-# Detener y borrar datos (¡destructivo!)
+# Stop and delete data (destructive!)
 docker compose down -v
 ```
 
-### Actualizar n8n
+### Updating n8n
 
-1. Cambia `N8N_VERSION` (y, si corresponde, `N8N_SANDBOX_VERSION`) en `.env`.
-2. Descarga las imágenes y recrea los contenedores:
+1. Change `N8N_VERSION` (and `N8N_SANDBOX_VERSION` if needed) in `.env`.
+2. Pull the images and recreate the containers:
 
 ```bash
 docker compose pull
 docker compose up -d
 ```
 
-### Copias de seguridad
+### Backups
 
-Los datos de n8n viven en el volumen `n8n-data`. Para respaldarlo:
+n8n data lives in the `n8n-data` volume. To back it up:
 
 ```bash
 docker run --rm \
@@ -124,43 +126,42 @@ docker run --rm \
   alpine tar czf "/backup/n8n-data-$(date +%F).tar.gz" -C /data .
 ```
 
-Para restaurar, detén el stack y extrae el archivo en el volumen antes de
-volver a arrancar. Verifica siempre la restauración en un entorno de prueba.
+To restore, stop the stack and extract the archive into the volume before
+starting it again. Always verify the restore in a test environment.
 
-## Seguridad
+## Security
 
-- Solo el puerto `5678` está publicado. `sandbox-api`, `sandbox-runner-1`,
-  `runners` y `searxng` deben permanecer en la red interna de Compose.
-- `sandbox-runner-1` corre en modo privilegiado (Docker-in-Docker): no
-  publiques sus puertos ni lo expongas a Internet.
-- Si vas a exponer n8n en un servidor público, ponlo detrás de un reverse proxy
-  con HTTPS y configura `N8N_HOST`, `N8N_PROTOCOL` y `WEBHOOK_URL` en
-  consecuencia.
-- `.env` contiene secretos reales y está excluido del repositorio mediante
-  `.gitignore`. Versiona únicamente `.env.example` con valores de ejemplo.
-  Si en algún momento se subieron secretos reales, rótalos: siguen presentes en
-  el historial de Git.
+- Only port `5678` is published. `sandbox-api`, `sandbox-runner-1`, `runners`,
+  and `searxng` must stay on the internal Compose network.
+- `sandbox-runner-1` runs in privileged mode (Docker-in-Docker): do not publish
+  its ports or expose it to the Internet.
+- If you expose n8n on a public server, put it behind an HTTPS reverse proxy and
+  set `N8N_HOST`, `N8N_PROTOCOL`, and `WEBHOOK_URL` accordingly.
+- `.env` contains real secrets and is excluded from the repository via
+  `.gitignore`. Only version `.env.example` with example values. If real
+  secrets were ever committed, rotate them: they remain in the Git history.
 
-## Estructura del repositorio
+## Repository structure
 
 ```text
 .
-├── docker-compose.yaml      # Definición del stack
-├── .env                     # Versiones y secretos locales (ignorado por Git)
-├── .env.example             # Plantilla de configuración
-├── .gitignore               # Excluye secretos y artefactos locales
-├── searxng-settings.yml     # Configuración de SearXNG (JSON habilitado)
-└── README.md
+├── docker-compose.yaml      # Stack definition
+├── .env                     # Versions and local secrets (ignored by Git)
+├── .env.example             # Configuration template
+├── .gitignore               # Excludes secrets and local artifacts
+├── searxng-settings.yml     # SearXNG configuration (JSON enabled)
+├── README.es.md             # Spanish documentation
+└── README.md                # English documentation
 ```
 
-## Solución de problemas
+## Troubleshooting
 
-- **`n8n` no arranca**: revisa que `sandbox-api` esté `healthy` con
-  `docker compose ps`. `n8n` depende de su healthcheck.
-- **Puerto 5678 ocupado**: cambia el mapeo en `docker-compose.yaml` o detén el
-  proceso que lo usa.
-- **Los runners no ejecutan código**: verifica que
-  `N8N_RUNNERS_AUTH_TOKEN` coincida entre `n8n` y `runners`.
-- **Búsquedas de IA sin resultados**: confirma que
-  `N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080` y que
-  `searxng-settings.yml` mantiene el formato `json` habilitado.
+- **`n8n` does not start**: check that `sandbox-api` is `healthy` with
+  `docker compose ps`. `n8n` depends on its healthcheck.
+- **Port 5678 is already in use**: change the mapping in `docker-compose.yaml`
+  or stop the process using it.
+- **Runners do not execute code**: verify that `N8N_RUNNERS_AUTH_TOKEN` matches
+  between `n8n` and `runners`.
+- **AI searches return no results**: confirm that
+  `N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080` and that
+  `searxng-settings.yml` keeps the `json` format enabled.
